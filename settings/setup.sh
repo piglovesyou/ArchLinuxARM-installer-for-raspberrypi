@@ -1,22 +1,41 @@
 #!/bin/sh
 
+# Users
+passwd <<\__EOF__
+root
+root
+__EOF__
+
+useradd -m -G wheel pig
+passwd pig <<\__EOF__
+pig
+pig
+__EOF__
+
+
+# Keyboard
+loadkeys jp106
+echo 'KEYMAP=jp106' >> /etc/vconsole.conf
+
+
+# Localtime
+ln -s /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
+
+
+# Packages
 pacman -Syu --noconfirm
 pacman -S bluez bluez-utils python python-pip --noconfirm
+pacman -S wget git vim dialog --noconfirm
+
+cat <<EOF >> /etc/pacman.conf
+[archlinuxfr]
+SigLevel = Never
+Server = http://repo.archlinux.fr/$arch
+EOF
+
+pacman -S yaourt --noconfirm
+
+
+# Services
 systemctl start bluetooth.service
 systemctl enable bluetooth.service
-
-pacman -S wget git mercurial go --noconfirm
-
-mkdir ~/gocode
-echo GOPATH=~/gocode >> ~/.bashrc
-echo GOPATH=~/gocode >> ~/.bash_profile
-echo PATH=$PATH:$GOCODE/bin >> ~/.bashrc
-echo PATH=$PATH:$GOCODE/bin >> ~/.bash_profile
-
-go get github.com/revel/revel
-go get github.com/revel/cmd/revel
-go get github.com/stianeikeland/go-rpio
-
-go version
-revel
-

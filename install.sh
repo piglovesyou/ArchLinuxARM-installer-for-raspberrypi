@@ -3,7 +3,7 @@
 ##
 # Check SDCard device path.
 #
-[ -z "${1+x}" ]
+[ -z "${1+x}" ] # True if string empty.
 ret=${?}
 if [ ${ret} -eq 0 ]; then
     echo "SDCard device path is not set."
@@ -11,8 +11,8 @@ if [ ${ret} -eq 0 ]; then
 fi
 echo SDCard device path is $1.
 SDCARD_PATH=$1
-BOOT_PARTITION_PATH=${SDCARD_PATH}1
-ROOT_PARTITION_PATH=${SDCARD_PATH}2
+BOOT_PARTITION_PATH=${SDCARD_PATH}p1
+ROOT_PARTITION_PATH=${SDCARD_PATH}p2
 
 #
 # Check NIC IP address.
@@ -53,27 +53,40 @@ NIC_GATEWAY=$3
 NIC_DNS=$4
 
 #
-# Check Raspberry Pi Model 1 or 2.
+# Check Raspberry Pi Model 1, 2 or 3.
 #
 [ -z "${5+x}" ]
 ret=${?}
-if [ ${ret} -eq 0 ]; then
-    MODEL_NUM=1
+if [ ${ret} -ne 0 -a \( "$5" -eq "1" -o "$5" -eq "2" -o "$5" -o "3" \) ]; then
+    MODEL_NUM="$5"
 else
-    MODEL_NUM=2
+    MODEL_NUM=3
 fi
 echo MODEL_NUM is $MODEL_NUM
 
 #
+# Registering Public Key
+#
+[ -z "${6+x}" ]
+ret=${?}
+if [ ${ret} -eq 0 ]; then
+    echo Provide public key to register to /root/.ssh/authorized_keys
+    exit 1
+else
+    PUBLIC_KEY="$6"
+fi
+echo PUBLIC_KEY is $PUBLIC_KEY
+
+#
 # Check and download Arch Linux ARM image.
 #
-
 if [ ${MODEL_NUM} = 1 ]; then
     IMAGE_FILE_NAME=ArchLinuxARM-rpi-latest.tar.gz
 else
-    IMAGE_FILE_NAME=ArchLinuxARM-rpi-2-latest.tar.gz
+    IMAGE_FILE_NAME=ArchLinuxARM-rpi-${MODEL_NUM}-latest.tar.gz
 fi
 IMAGE_URL=http://archlinuxarm.org/os/${IMAGE_FILE_NAME}
+echo $IMAGE_URL
 if [ -f "./${IMAGE_FILE_NAME}" ]; then
     echo "${IMAGE_FILE_NAME} found."
 else
@@ -120,13 +133,16 @@ echo "Create filesystem and bootloader on SDCARD."
 mkfs.vfat ${BOOT_PARTITION_PATH}
 sleep 2s
 mount ${BOOT_PARTITION_PATH} boot
-mkfs.f2fs ${ROOT_PARTITION_PATH}
+mkfs.ext4 ${ROOT_PARTITION_PATH}
 sleep 2s
 mount ${ROOT_PARTITION_PATH} root
 bsdtar -xpf ./${IMAGE_FILE_NAME} -C root
 sync
 
 mv root/boot/* boot
+
+mount ${BOOT_PARTITION_PATH} boot
+mount ${ROOT_PARTITION_PATH} root
 
 #
 # Settings
@@ -142,12 +158,22 @@ echo NIC DNS address is ${NIC_DNS}
 echo "[Match]" > ${NIC_CONFIG_PATH}
 echo "Name=eth0" >> ${NIC_CONFIG_PATH}
 echo "[Network]" >> ${NIC_CONFIG_PATH}
-echo "DHCP=none" >> ${NIC_CONFIG_PATH}
+echo "DHCP=no" >> ${NIC_CONFIG_PATH}
 echo "DNS=${NIC_DNS}" >> ${NIC_CONFIG_PATH}
 echo "[Address]" >> ${NIC_CONFIG_PATH}
 echo "Address=${NIC_IPADDR}/24" >> ${NIC_CONFIG_PATH}
 echo "[Route]" >> ${NIC_CONFIG_PATH}
 echo "Gateway=${NIC_GATEWAY}" >> ${NIC_CONFIG_PATH}
+
+#
+# Register Public Key
+#
+mkdir root/root/.ssh
+chmod 600 root/root/.ssh
+touch root/root/.ssh/authorized_keys
+chmod 700 root/root/.ssh/authorized_keys
+cat $PUBLIC_KEY > root/root/.ssh/authorized_keys
+echo PUBLIC_KEY is registered from $PUBLIC_KEY
 
 #
 # Finalize
