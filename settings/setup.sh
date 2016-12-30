@@ -1,41 +1,41 @@
 #!/bin/sh
 
-# Users
+# First time
 passwd <<\__EOF__
-root
-root
+a
+a
 __EOF__
 
-useradd -m -G wheel pig
+if [ ! -d "/home/pig" ]; then
+	useradd -m -G wheel pig
+fi
+
 passwd pig <<\__EOF__
-pig
-pig
+a
+a
 __EOF__
 
-
-# Keyboard
-loadkeys jp106
-echo 'KEYMAP=jp106' >> /etc/vconsole.conf
-
-
-# Localtime
-ln -s /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
-
+sed -i.bak '/%wheel ALL=(ALL) NOPASSWD: ALL/d' /etc/sudoers
+echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
 # Packages
 pacman -Syu --noconfirm
-pacman -S bluez bluez-utils python python-pip --noconfirm
-pacman -S wget git vim dialog --noconfirm
+pacman -S \
+    python python-pip \
+    wget vim base-devel \
+    --noconfirm
 
 cat <<EOF >> /etc/pacman.conf
 [archlinuxfr]
 SigLevel = Never
-Server = http://repo.archlinux.fr/$arch
+Server = http://repo.archlinux.fr/arm
 EOF
 
+# yaourt
+cd /tmp
+rm -rf package-query*
+sudo -u pig curl -O https://aur.archlinux.org/cgit/aur.git/snapshot/package-query.tar.gz
+sudo -u pig tar zxvf package-query.tar.gz
+cd package-query
+yes | sudo -u pig makepkg -si
 pacman -S yaourt --noconfirm
-
-
-# Services
-systemctl start bluetooth.service
-systemctl enable bluetooth.service
