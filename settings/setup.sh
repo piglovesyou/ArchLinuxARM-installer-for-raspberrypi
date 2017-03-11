@@ -19,7 +19,7 @@ sed -i.bak '/%wheel ALL=(ALL) NOPASSWD: ALL/d' /etc/sudoers
 echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
 # yaourt
-su ~ pig
+su - pig
 wget https://aur.archlinux.org/cgit/aur.git/snapshot/package-query.tar.gz
 tar zxvf package-query.tar.gz
 (cd package-query && makepkg --noconfirm --syncdeps --install)
